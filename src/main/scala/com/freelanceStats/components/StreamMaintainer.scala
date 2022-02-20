@@ -4,6 +4,7 @@ import akka.Done
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Keep, RunnableGraph}
 import akka.stream.{KillSwitch, KillSwitches, Materializer}
+import com.freelanceStats.commons.streamMaintainer.StreamMaintainerConfiguration
 import com.freelanceStats.components.queue.QueueClient
 
 import javax.inject.{Inject, Singleton}
@@ -22,4 +23,7 @@ class StreamMaintainer @Inject() (
   override implicit val timeout: FiniteDuration = 1.minute
 
   override val runnableGraph: RunnableGraph[(KillSwitch, Future[Done])] = ???
+
+  override val configuration: StreamMaintainerConfiguration =
+    StreamMaintainerConfiguration.Default
 }
