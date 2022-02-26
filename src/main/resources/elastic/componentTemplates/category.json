@@ -1,0 +1,23 @@
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "categories": {
+          "type": "nested",
+          "properties": {
+            "id": {
+              "type": "keyword"
+            },
+            "name": {
+              "type": "keyword"
+            }
+          }
+        }
+      }
+    }
+  },
+  "version": 1,
+  "_meta": {
+    "description": "Category mapping"
+  }
+}

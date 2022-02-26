@@ -1,0 +1,79 @@
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "employer": {
+          "properties": {
+            "sourceId": {
+              "type": "keyword"
+            },
+            "source": {
+              "type": "keyword"
+            },
+            "username": {
+              "type": "keyword"
+            },
+            "location": {
+              "properties": {
+                "country": {
+                  "properties": {
+                    "id": {
+                      "type": "keyword"
+                    },
+                    "name": {
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "city": {
+                  "properties": {
+                    "id": {
+                      "type": "keyword"
+                    },
+                    "name": {
+                      "type": "keyword"
+                    }
+                  }
+                }
+              }
+            },
+            "primaryLanguage": {
+              "properties": {
+                "id": {
+                  "type": "keyword"
+                },
+                "name": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "primaryCurrency": {
+              "properties": {
+                "id": {
+                  "type": "keyword"
+                },
+                "name": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "timezone": {
+              "properties": {
+                "id": {
+                  "type": "keyword"
+                },
+                "name": {
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "version": 1,
+  "_meta": {
+    "description": "Employer mapping"
+  }
+}

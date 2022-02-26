@@ -1,0 +1,34 @@
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "fileReference": {
+          "properties": {
+            "bucket": {
+              "type": "keyword"
+            },
+            "key": {
+              "type": "keyword"
+            },
+            "lastModified": {
+              "type": "date"
+            },
+            "eTag": {
+              "type": "text"
+            },
+            "size": {
+              "type": "long"
+            },
+            "contentType": {
+              "type": "keyword"
+            }
+          }
+        }
+      }
+    }
+  },
+  "version": 1,
+  "_meta": {
+    "description": "FileReference mapping"
+  }
+}

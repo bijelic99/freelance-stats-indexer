@@ -1,0 +1,54 @@
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "payment": {
+          "properties": {
+            "_type": {
+              "type": "keyword"
+            },
+            "budget": {
+              "properties": {
+                "minimumUsd": {
+                  "type": "double"
+                },
+                "maximumUsd": {
+                  "type": "double"
+                },
+                "minimum": {
+                  "type": "double"
+                },
+                "maximum": {
+                  "type": "double"
+                },
+                "currency": {
+                  "properties": {
+                    "id": {
+                      "type": "keyword"
+                    },
+                    "name": {
+                      "type": "keyword"
+                    }
+                  }
+                }
+              }
+            },
+            "workDuration": {
+              "type": "keyword"
+            },
+            "repeating": {
+              "type": "keyword"
+            },
+            "repeatInterval": {
+              "type": "keyword"
+            }
+          }
+        }
+      }
+    }
+  },
+  "version": 1,
+  "_meta": {
+    "description": "Payment mapping"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "location": {
+          "properties": {
+            "country": {
+              "properties": {
+                "id": {
+                  "type": "keyword"
+                },
+                "name": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "city": {
+              "properties": {
+                "id": {
+                  "type": "keyword"
+                },
+                "name": {
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "version": 1,
+  "_meta": {
+    "description": "Location mapping"
+  }
+}
