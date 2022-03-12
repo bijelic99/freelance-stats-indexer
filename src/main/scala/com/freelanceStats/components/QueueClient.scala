@@ -1,13 +1,12 @@
-package com.freelanceStats.components.queue
+package com.freelanceStats.components
 
 import akka.stream.Materializer
 import akka.stream.alpakka.amqp.AmqpUriConnectionProvider
 import akka.util.ByteString
-import com.freelanceStats.alpakkaRabbitMQClient.AlpakkaRabbitMQConsumer
-import com.freelanceStats.alpakkaRabbitMQClient.elementConverter.ElementToByteStringConverter
+import com.freelanceStats.alpakkaRabbitMQClient.AlpakkaRabbitMQPProducer
+import com.freelanceStats.alpakkaRabbitMQClient.elementConverter.ByteStringToElementConverter
 import com.freelanceStats.commons.implicits.playJson.ModelsFormat
 import com.freelanceStats.commons.models.RawJob
-import com.freelanceStats.components.queue.QueueClient.RawJobToByteStringConverter
 import com.freelanceStats.configurations.AlpakkaRabbitMQClientConfiguration
 import play.api.libs.json.Json
 
@@ -19,17 +18,18 @@ class QueueClient @Inject() (
     override val amqpConnectionProvider: AmqpUriConnectionProvider
 )(
     override implicit val materializer: Materializer
-) extends AlpakkaRabbitMQConsumer[RawJob] {
-  override def elementToByteStringConverter
-      : ElementToByteStringConverter[RawJob] = RawJobToByteStringConverter
+) extends AlpakkaRabbitMQPProducer[RawJob] {
+  override def byteStringToElementConverter
+      : ByteStringToElementConverter[RawJob] =
+    QueueClient.ByteStringToRawJobConverter
 }
 
 object QueueClient {
-  object RawJobToByteStringConverter
-      extends ElementToByteStringConverter[RawJob] {
+  object ByteStringToRawJobConverter
+      extends ByteStringToElementConverter[RawJob] {
     import ModelsFormat._
 
-    override def toByteString(element: RawJob): ByteString =
-      ByteString.fromString(Json.toJson(element).toString())
+    override def toElement(byteString: ByteString): RawJob =
+      Json.parse(byteString.asByteBuffer.array()).as[RawJob]
   }
 }
