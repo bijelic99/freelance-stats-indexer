@@ -36,9 +36,10 @@ libraryDependencies ++= Seq(
   "com.typesafe" % "config" % "1.4.1",
   "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
   "com.typesafe.akka" %% "akka-http" % "10.2.7",
+  "com.lightbend.akka" %% "akka-stream-alpakka-elasticsearch" % "3.0.4",
   "com.freelance-stats" %% "alpakka-rabbitmq-client" % "0.0.3",
   "com.freelance-stats" %% "amazon-async-s3-client" % "0.0.5",
-  "com.freelance-stats" %% "commons" % "0.0.14",
+  "com.freelance-stats" %% "commons" % "0.0.15",
   "com.typesafe.play" %% "play-cache" % "2.8.13",
   "org.neo4j.driver" % "neo4j-java-driver" % "4.4.3",
   "io.github.neotypes" %% "neotypes-core" % "0.18.3"
