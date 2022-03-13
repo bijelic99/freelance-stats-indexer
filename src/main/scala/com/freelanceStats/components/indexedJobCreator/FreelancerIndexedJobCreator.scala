@@ -8,11 +8,11 @@ import com.freelanceStats.s3Client.models.FileReference
 
 class FreelancerIndexedJobCreator extends IndexedJobCreator {
   override def apply(): Flow[
-    (RawJob, Option[IndexedJob], FileReference, Source[ByteString, _]),
+    (RawJob, Option[IndexedJob], (FileReference, Source[ByteString, _])),
     Either[IndexingError, IndexingSuccess],
     _
   ] =
-    Flow[(RawJob, Option[IndexedJob], FileReference, Source[ByteString, _])]
+    Flow[(RawJob, Option[IndexedJob], (FileReference, Source[ByteString, _]))]
       .map(???) // TODO Implement this
       .recover { case indexingError: IndexingError =>
         Left(indexingError)

@@ -9,7 +9,7 @@ import com.freelanceStats.s3Client.models.FileReference
 
 trait IndexedJobCreator {
   def apply(): Flow[
-    (RawJob, Option[IndexedJob], FileReference, Source[ByteString, _]),
+    (RawJob, Option[IndexedJob], (FileReference, Source[ByteString, _])),
     Either[IndexingError, IndexingSuccess],
     _
   ]

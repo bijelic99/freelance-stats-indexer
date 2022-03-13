@@ -2,11 +2,13 @@ package com.freelanceStats.configurations
 
 import com.typesafe.config.ConfigFactory
 
+import javax.inject.Inject
 import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 import scala.util.Try
 
-class AlpakkaRabbitMQClientConfiguration
-    extends com.freelanceStats.alpakkaRabbitMQClient.configuration.AlpakkaRabbitMQClientConfiguration {
+class AlpakkaRabbitMQClientConfiguration @Inject() (
+    applicationConfiguration: ApplicationConfiguration
+) extends com.freelanceStats.alpakkaRabbitMQClient.configuration.AlpakkaRabbitMQClientConfiguration {
 
   private val configuration = ConfigFactory.load()
 
@@ -15,9 +17,7 @@ class AlpakkaRabbitMQClientConfiguration
   override val queueName: String =
     configuration.getString("queues.raw-job-queue.queueName")
 
-  override val writeBufferSize: Int =
-    Try(configuration.getInt("queues.raw-job-queue.writeBufferSize")).toOption
-      .getOrElse(10)
+  override val writeBufferSize: Int = applicationConfiguration.batchElementsMax
 
   override val writeConfirmationTimeout: FiniteDuration =
     Try(
@@ -29,7 +29,5 @@ class AlpakkaRabbitMQClientConfiguration
       }
       .getOrElse(1.second)
 
-  override val readBufferSize: Int =
-    Try(configuration.getInt("queues.raw-job-queue.readBufferSize")).toOption
-      .getOrElse(10)
+  override val readBufferSize: Int = applicationConfiguration.batchElementsMax
 }

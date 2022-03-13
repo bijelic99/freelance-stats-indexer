@@ -4,6 +4,10 @@ import akka.NotUsed
 import akka.stream.scaladsl.{Flow, Source}
 import com.freelanceStats.commons.models.RawJob
 import com.freelanceStats.commons.models.indexedJob.IndexedJob
+import com.freelanceStats.configurations.{
+  ApplicationConfiguration,
+  ElasticConfiguration
+}
 import com.freelanceStats.models.IndexingError
 import com.sksamuel.elastic4s.{
   RequestFailure,
@@ -14,18 +18,19 @@ import play.api.libs.json.Json
 
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext
-import scala.concurrent.duration.DurationInt
 
 class ElasticClient @Inject() (
-    client: SKSElasticClient // TODO Add module so client can be injected
+    client: SKSElasticClient,
+    elasticConfiguration: ElasticConfiguration,
+    applicationConfiguration: ApplicationConfiguration
 )(implicit
     executionContext: ExecutionContext
 ) {
-  import com.sksamuel.elastic4s.ElasticDsl._
   import com.freelanceStats.commons.implicits.playJson.ModelsFormat._
+  import com.sksamuel.elastic4s.ElasticDsl._
 
   private def findDocumentsBySourceAndSourceIdQuery(job: RawJob) =
-    search("") // TODO Load index name from config
+    search(elasticConfiguration.index)
       .size(1)
       .query(
         bool(
@@ -44,7 +49,10 @@ class ElasticClient @Inject() (
       .map { job =>
         job -> findDocumentsBySourceAndSourceIdQuery(job)
       }
-      .groupedWithin(10, 10.seconds) // TODO Values should come from config
+      .groupedWithin(
+        applicationConfiguration.batchElementsMax,
+        applicationConfiguration.batchWithin
+      )
       .flatMapConcat { jobsWithQueries =>
         Source
           .future {

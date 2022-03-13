@@ -42,7 +42,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-cache" % "2.8.13",
   "org.neo4j.driver" % "neo4j-java-driver" % "4.4.3",
   "io.github.neotypes" %% "neotypes-core" % "0.18.3",
-  "com.sksamuel.elastic4s" %% "elastic4s-core" % "7.17.1"
+  "com.sksamuel.elastic4s" %% "elastic4s-client-esjava" % "7.17.1"
 )
 
 resolvers ++= Seq(
