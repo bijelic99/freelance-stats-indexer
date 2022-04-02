@@ -4,10 +4,15 @@ import com.freelanceStats.commons.models.indexedJob.ReferencedByAlias
 import com.freelanceStats.components.aliasResolver.AliasResolver
 import com.freelanceStats.configurations.Neo4jConfiguration
 import com.freelanceStats.models.SourceAlias
+import com.freelanceStats.util.neo4jConversions.{
+  GetQueryResultMapper,
+  ReferencedByAliasValueMapper,
+  SourceAliasValueMapper
+}
 import neotypes.implicits.all._
-import neotypes.mappers.ResultMapper
+import neotypes.mappers.{ResultMapper, ValueMapper}
 import neotypes.{DeferredQuery, GraphDatabase, QueryArgMapper}
-import org.neo4j.driver.AuthTokens
+import org.neo4j.driver.{AuthTokens, Value}
 
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
@@ -16,7 +21,19 @@ trait NeoTypesAliasResolver[T <: ReferencedByAlias] extends AliasResolver[T] {
 
   implicit val sourceAliasQueryArgMapper: QueryArgMapper[SourceAlias[T]]
 
-  implicit val sourceAliasResultMapper: ResultMapper[SourceAlias[T]]
+  val valueToT: Value => T
+
+  implicit val referencedByAliasValueMapper: ValueMapper[T] =
+    new ReferencedByAliasValueMapper[T](valueToT)
+
+  implicit val sourceAliasValueMapper: ValueMapper[SourceAlias[T]] =
+    new SourceAliasValueMapper[T]
+
+  val getQueryResultMapper: GetQueryResultMapper[T] =
+    new GetQueryResultMapper[T](
+      sourceAliasValueMapper,
+      referencedByAliasValueMapper
+    )
 
   implicit val executionContext: ExecutionContext
 
@@ -40,26 +57,28 @@ trait NeoTypesAliasResolver[T <: ReferencedByAlias] extends AliasResolver[T] {
       value: String
   ): DeferredQuery[SourceAlias[T]] =
     c"""
-       MATCH (x: $aliasNodeType { source: '$source', value: '$value' })
+       MATCH (alias: #$aliasNodeType { source: $source, value: $value })
         -[:ALIAS_FOR]->
-          (y: $referenceNodeType) RETURN (: $aliasNodeType {id: x.id, source: x.source, value: x.value, referencedValue: y})
+          (referencedValue: #$referenceNodeType) RETURN alias, referencedValue
        """.query[SourceAlias[T]]
 
   private def putQuery(
       sourceAlias: SourceAlias[T]
   ): DeferredQuery[SourceAlias[T]] =
     c"""
-       CREATE (x: $aliasNodeType { $sourceAlias }) RETURN x
+       CREATE (x: #$aliasNodeType { $sourceAlias }) RETURN x
      """.query[SourceAlias[T]]
 
   override def resolveOrElseAdd(alias: SourceAlias[T]): Future[SourceAlias[T]] =
     getQuery(alias.source, alias.value)
-      .set(driver)
+      .set(driver)(getQueryResultMapper)
       .flatMap(
         _.headOption
           .fold(
             putQuery(alias.copy(id = Some(UUID.randomUUID().toString)))
-              .single(driver)
+              .single(driver)(
+                ResultMapper.fromValueMapper(sourceAliasValueMapper)
+              )
           )(Future.successful)
       )
 }

@@ -6,10 +6,10 @@ import com.freelanceStats.configurations.Neo4jConfiguration
 import com.freelanceStats.models.SourceAlias
 import com.freelanceStats.util.neo4jConversions.{
   ReferencedByAliasConversion,
-  SourceAliasQueryArgMapper,
-  SourceAliasResultMapper
+  SourceAliasQueryArgMapper
 }
-import neotypes.{QueryArgMapper, mappers}
+import neotypes.QueryArgMapper
+import org.neo4j.driver.Value
 import play.api.cache.AsyncCacheApi
 
 import javax.inject.Inject
@@ -27,11 +27,9 @@ class TimezoneAliasResolver @Inject() (
   override implicit val sourceAliasQueryArgMapper
       : QueryArgMapper[SourceAlias[Timezone]] =
     new SourceAliasQueryArgMapper[Timezone]
-  override implicit val sourceAliasResultMapper
-      : mappers.ResultMapper[SourceAlias[Timezone]] =
-    new SourceAliasResultMapper[Timezone](
-      ReferencedByAliasConversion.Timezone.valueToT
-    )
+
+  override val valueToT: Value => Timezone =
+    ReferencedByAliasConversion.Timezone.valueToT
 
   override def aliasNodeType: String = "TimezoneAlias"
 

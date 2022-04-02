@@ -6,10 +6,10 @@ import com.freelanceStats.configurations.Neo4jConfiguration
 import com.freelanceStats.models.SourceAlias
 import com.freelanceStats.util.neo4jConversions.{
   ReferencedByAliasConversion,
-  SourceAliasQueryArgMapper,
-  SourceAliasResultMapper
+  SourceAliasQueryArgMapper
 }
-import neotypes.{QueryArgMapper, mappers}
+import neotypes.QueryArgMapper
+import org.neo4j.driver.Value
 import play.api.cache.AsyncCacheApi
 
 import javax.inject.Inject
@@ -26,11 +26,9 @@ class CityAliasResolver @Inject() (
     with CachedAliasResolver[City] {
   override implicit val sourceAliasQueryArgMapper
       : QueryArgMapper[SourceAlias[City]] = new SourceAliasQueryArgMapper[City]
-  override implicit val sourceAliasResultMapper
-      : mappers.ResultMapper[SourceAlias[City]] =
-    new SourceAliasResultMapper[City](
-      ReferencedByAliasConversion.City.valueToT
-    )
+
+  override val valueToT: Value => City =
+    ReferencedByAliasConversion.City.valueToT
 
   override def aliasNodeType: String = "CityAlias"
 

@@ -6,11 +6,10 @@ import com.freelanceStats.configurations.Neo4jConfiguration
 import com.freelanceStats.models.SourceAlias
 import com.freelanceStats.util.neo4jConversions.{
   ReferencedByAliasConversion,
-  SourceAliasQueryArgMapper,
-  SourceAliasResultMapper
+  SourceAliasQueryArgMapper
 }
 import neotypes.QueryArgMapper
-import neotypes.mappers.ResultMapper
+import org.neo4j.driver.Value
 import play.api.cache.AsyncCacheApi
 
 import javax.inject.Inject
@@ -28,11 +27,8 @@ class CategoryAliasResolver @Inject() (
   override implicit val sourceAliasQueryArgMapper
       : QueryArgMapper[SourceAlias[Category]] =
     new SourceAliasQueryArgMapper[Category]
-  override implicit val sourceAliasResultMapper
-      : ResultMapper[SourceAlias[Category]] =
-    new SourceAliasResultMapper[Category](
-      ReferencedByAliasConversion.Category.valueToT
-    )
+  override val valueToT: Value => Category =
+    ReferencedByAliasConversion.Category.valueToT
   override def aliasNodeType: String = "CategoryAlias"
   override def referenceNodeType: String = "Category"
 

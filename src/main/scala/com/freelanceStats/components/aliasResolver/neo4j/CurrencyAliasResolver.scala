@@ -6,10 +6,10 @@ import com.freelanceStats.configurations.Neo4jConfiguration
 import com.freelanceStats.models.SourceAlias
 import com.freelanceStats.util.neo4jConversions.{
   ReferencedByAliasConversion,
-  SourceAliasQueryArgMapper,
-  SourceAliasResultMapper
+  SourceAliasQueryArgMapper
 }
-import neotypes.{QueryArgMapper, mappers}
+import neotypes.QueryArgMapper
+import org.neo4j.driver.Value
 import play.api.cache.AsyncCacheApi
 
 import javax.inject.Inject
@@ -27,11 +27,9 @@ class CurrencyAliasResolver @Inject() (
   override implicit val sourceAliasQueryArgMapper
       : QueryArgMapper[SourceAlias[Currency]] =
     new SourceAliasQueryArgMapper[Currency]
-  override implicit val sourceAliasResultMapper
-      : mappers.ResultMapper[SourceAlias[Currency]] =
-    new SourceAliasResultMapper[Currency](
-      ReferencedByAliasConversion.Currency.valueToT
-    )
+
+  override val valueToT: Value => Currency =
+    ReferencedByAliasConversion.Currency.valueToT
 
   override def aliasNodeType: String = "CurrencyAlias"
 

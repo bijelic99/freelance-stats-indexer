@@ -6,10 +6,10 @@ import com.freelanceStats.configurations.Neo4jConfiguration
 import com.freelanceStats.models.SourceAlias
 import com.freelanceStats.util.neo4jConversions.{
   ReferencedByAliasConversion,
-  SourceAliasQueryArgMapper,
-  SourceAliasResultMapper
+  SourceAliasQueryArgMapper
 }
-import neotypes.{QueryArgMapper, mappers}
+import neotypes.QueryArgMapper
+import org.neo4j.driver.Value
 import play.api.cache.AsyncCacheApi
 
 import javax.inject.Inject
@@ -27,11 +27,9 @@ class PositionTypeAliasResolver @Inject() (
   override implicit val sourceAliasQueryArgMapper
       : QueryArgMapper[SourceAlias[PositionType]] =
     new SourceAliasQueryArgMapper[PositionType]
-  override implicit val sourceAliasResultMapper
-      : mappers.ResultMapper[SourceAlias[PositionType]] =
-    new SourceAliasResultMapper[PositionType](
-      ReferencedByAliasConversion.PositionType.valueToT
-    )
+
+  override val valueToT: Value => PositionType =
+    ReferencedByAliasConversion.PositionType.valueToT
 
   override def aliasNodeType: String = "PositionTypeAlias"
 

@@ -30,6 +30,6 @@ object QueueClient {
     import ModelsFormat._
 
     override def toElement(byteString: ByteString): RawJob =
-      Json.parse(byteString.asByteBuffer.array()).as[RawJob]
+      Json.parse(byteString.utf8String).as[RawJob]
   }
 }

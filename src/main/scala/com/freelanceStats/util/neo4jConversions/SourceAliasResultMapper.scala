@@ -16,10 +16,6 @@ class SourceAliasResultMapper[T <: ReferencedByAlias](valueToT: Value => T)
       id <- value.find(_._1.equals("id")).map(_._2.asString())
       source <- value.find(_._1.equals("source")).map(_._2.asString())
       _value <- value.find(_._1.equals("value")).map(_._2.asString())
-      referencedValue <- value
-        .find(_._1.equals("referencedValue"))
-        .map(_._2)
-        .map(valueToT)
-    } yield SourceAlias(Some(id), source, _value, Some(referencedValue))
+    } yield SourceAlias[T](Some(id), source, _value, None)
   }.toRight(new NoSuchElementException())
 }
