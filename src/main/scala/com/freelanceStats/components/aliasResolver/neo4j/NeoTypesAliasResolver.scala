@@ -52,22 +52,20 @@ trait NeoTypesAliasResolver[T <: ReferencedByAlias] extends AliasResolver[T] {
       .getOrElse(AuthTokens.none())
   )
 
+  // String interpolation explained here https://neotypes.github.io/neotypes/parameterized_queries.html is not working
   private def getQuery(
       source: String,
       value: String
   ): DeferredQuery[SourceAlias[T]] =
-    c"""
-       MATCH (alias: #$aliasNodeType { source: $source, value: $value })
-        -[:ALIAS_FOR]->
-          (referencedValue: #$referenceNodeType) RETURN alias, referencedValue
-       """.query[SourceAlias[T]]
+    (c"MATCH (alias: " + aliasNodeType + c" { source: $source, value: $value }) -[:ALIAS_FOR]-> (referencedValue: " + referenceNodeType + c") RETURN alias, referencedValue")
+      .query[SourceAlias[T]]
 
+  // String interpolation explained here https://neotypes.github.io/neotypes/parameterized_queries.html is not working
   private def putQuery(
       sourceAlias: SourceAlias[T]
   ): DeferredQuery[SourceAlias[T]] =
-    c"""
-       CREATE (x: #$aliasNodeType { $sourceAlias }) RETURN x
-     """.query[SourceAlias[T]]
+    (c"CREATE (alias: " + aliasNodeType + c" { $sourceAlias }) RETURN alias")
+      .query[SourceAlias[T]]
 
   override def resolveOrElseAdd(alias: SourceAlias[T]): Future[SourceAlias[T]] =
     getQuery(alias.source, alias.value)
