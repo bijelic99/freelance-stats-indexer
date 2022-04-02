@@ -28,7 +28,7 @@ class CurrencyAliasResolver @Inject() (
       : QueryArgMapper[SourceAlias[Currency]] =
     new SourceAliasQueryArgMapper[Currency]
 
-  override val valueToT: Value => Currency =
+  override lazy val valueToT: Value => Currency =
     ReferencedByAliasConversion.Currency.valueToT
 
   override def aliasNodeType: String = "CurrencyAlias"

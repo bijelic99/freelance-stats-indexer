@@ -28,7 +28,7 @@ class TimezoneAliasResolver @Inject() (
       : QueryArgMapper[SourceAlias[Timezone]] =
     new SourceAliasQueryArgMapper[Timezone]
 
-  override val valueToT: Value => Timezone =
+  override lazy val valueToT: Value => Timezone =
     ReferencedByAliasConversion.Timezone.valueToT
 
   override def aliasNodeType: String = "TimezoneAlias"

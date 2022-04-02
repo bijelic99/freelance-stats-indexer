@@ -27,7 +27,7 @@ class CityAliasResolver @Inject() (
   override implicit val sourceAliasQueryArgMapper
       : QueryArgMapper[SourceAlias[City]] = new SourceAliasQueryArgMapper[City]
 
-  override val valueToT: Value => City =
+  override lazy val valueToT: Value => City =
     ReferencedByAliasConversion.City.valueToT
 
   override def aliasNodeType: String = "CityAlias"

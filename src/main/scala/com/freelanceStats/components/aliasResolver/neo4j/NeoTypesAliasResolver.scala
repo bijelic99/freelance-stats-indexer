@@ -21,7 +21,7 @@ trait NeoTypesAliasResolver[T <: ReferencedByAlias] extends AliasResolver[T] {
 
   implicit val sourceAliasQueryArgMapper: QueryArgMapper[SourceAlias[T]]
 
-  val valueToT: Value => T
+  def valueToT: Value => T
 
   implicit val referencedByAliasValueMapper: ValueMapper[T] =
     new ReferencedByAliasValueMapper[T](valueToT)
@@ -57,7 +57,7 @@ trait NeoTypesAliasResolver[T <: ReferencedByAlias] extends AliasResolver[T] {
       source: String,
       value: String
   ): DeferredQuery[SourceAlias[T]] =
-    (c"MATCH (alias: " + aliasNodeType + c" { source: $source, value: $value }) -[:ALIAS_FOR]-> (referencedValue: " + referenceNodeType + c") RETURN alias, referencedValue")
+    (c"MATCH (alias: " + aliasNodeType + c" { source: $source, value: $value }) OPTIONAL MATCH (alias) -[:ALIAS_FOR]-> (referencedValue: " + referenceNodeType + c") RETURN alias, referencedValue")
       .query[SourceAlias[T]]
 
   // String interpolation explained here https://neotypes.github.io/neotypes/parameterized_queries.html is not working

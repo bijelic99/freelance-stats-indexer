@@ -28,7 +28,7 @@ class PositionTypeAliasResolver @Inject() (
       : QueryArgMapper[SourceAlias[PositionType]] =
     new SourceAliasQueryArgMapper[PositionType]
 
-  override val valueToT: Value => PositionType =
+  override lazy val valueToT: Value => PositionType =
     ReferencedByAliasConversion.PositionType.valueToT
 
   override def aliasNodeType: String = "PositionTypeAlias"

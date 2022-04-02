@@ -22,6 +22,7 @@ class GetQueryResultMapper[T <: ReferencedByAlias](
       alias <- sourceAliasValueMapper.to("alias", map.get("alias"))
       referencedValue = map
         .get("referencedValue")
+        .filterNot(_.isNull)
         .map(x =>
           referencedByAliasValueMapper.to("referencedValue", Some(x)).toTry.get
         )

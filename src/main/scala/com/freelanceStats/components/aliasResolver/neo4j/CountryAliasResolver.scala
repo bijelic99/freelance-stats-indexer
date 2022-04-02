@@ -28,7 +28,7 @@ class CountryAliasResolver @Inject() (
       : QueryArgMapper[SourceAlias[Country]] =
     new SourceAliasQueryArgMapper[Country]
 
-  override val valueToT: Value => Country =
+  override lazy val valueToT: Value => Country =
     ReferencedByAliasConversion.Country.valueToT
 
   override def aliasNodeType: String = "CountryAlias"

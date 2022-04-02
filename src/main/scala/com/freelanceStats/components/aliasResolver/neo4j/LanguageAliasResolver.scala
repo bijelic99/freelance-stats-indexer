@@ -28,7 +28,7 @@ class LanguageAliasResolver @Inject() (
       : QueryArgMapper[SourceAlias[Language]] =
     new SourceAliasQueryArgMapper[Language]
 
-  override val valueToT: Value => Language =
+  override lazy val valueToT: Value => Language =
     ReferencedByAliasConversion.Language.valueToT
 
   override def aliasNodeType: String = "LanguageAlias"

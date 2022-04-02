@@ -27,7 +27,7 @@ class CategoryAliasResolver @Inject() (
   override implicit val sourceAliasQueryArgMapper
       : QueryArgMapper[SourceAlias[Category]] =
     new SourceAliasQueryArgMapper[Category]
-  override val valueToT: Value => Category =
+  override lazy val valueToT: Value => Category =
     ReferencedByAliasConversion.Category.valueToT
   override def aliasNodeType: String = "CategoryAlias"
   override def referenceNodeType: String = "Category"
