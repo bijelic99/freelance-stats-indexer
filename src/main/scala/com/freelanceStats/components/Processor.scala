@@ -37,7 +37,13 @@ class Processor @Inject() (
     queueClient.source
       .viaMat(KillSwitches.single)(Keep.right)
 
-  private def sink: Sink[Any, Future[Done]] = Sink.ignore
+  private def sink: Sink[Either[IndexingError, IndexingSuccess], Future[Done]] =
+    Flow[Either[IndexingError, IndexingSuccess]]
+      .collect { case Right(IndexingSuccess(job)) =>
+        job
+      }
+      .via(elasticClient.bulkIndex)
+      .toMat(Sink.ignore)(Keep.right)
 
   private def s3DocumentFetch()(implicit builder: Builder[_]) =
     builder.add(

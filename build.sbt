@@ -38,7 +38,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http" % "10.2.7",
   "com.freelance-stats" %% "alpakka-rabbitmq-client" % "0.0.3",
   "com.freelance-stats" %% "amazon-async-s3-client" % "0.0.5",
-  "com.freelance-stats" %% "commons" % "0.0.15",
+  "com.freelance-stats" %% "commons" % "0.0.16",
   "com.typesafe.play" %% "play-cache" % "2.8.13",
   "com.typesafe.play" %% "play-caffeine-cache" % "2.8.13",
   "com.github.ben-manes.caffeine" % "caffeine" % "2.8.8",

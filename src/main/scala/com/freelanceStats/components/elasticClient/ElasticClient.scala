@@ -18,6 +18,7 @@ import play.api.libs.json.Json
 
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext
+import scala.util.{Failure, Success, Try}
 
 class ElasticClient @Inject() (
     client: SKSElasticClient,
@@ -85,4 +86,42 @@ class ElasticClient @Inject() (
           }
       }
       .flatMapConcat(Source(_))
+
+  lazy val bulkIndex: Flow[IndexedJob, Try[String], NotUsed] =
+    Flow[IndexedJob]
+      .map { job =>
+        updateById(elasticConfiguration.index, job.id)
+          .docAsUpsert(
+            Json.toJson(job).toString()
+          )
+      }
+      .groupedWithin(
+        applicationConfiguration.batchElementsMax,
+        applicationConfiguration.batchWithin
+      )
+      .flatMapConcat { requests =>
+        Source.future(
+          client.execute(
+            bulk(
+              requests
+            )
+          )
+        )
+      }
+      .flatMapConcat { results =>
+        Source(
+          results.result.items
+        )
+      }
+      .map {
+        case result if result.error.isDefined =>
+          val error = result.error.get
+          Failure(
+            new Exception(
+              s"Elastic returned error for document with id: '${result.id}', got the following message: '${error.reason}'"
+            )
+          )
+        case result =>
+          Success(result.id)
+      }
 }
