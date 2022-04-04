@@ -44,7 +44,8 @@ libraryDependencies ++= Seq(
   "com.github.ben-manes.caffeine" % "caffeine" % "2.8.8",
   "org.neo4j.driver" % "neo4j-java-driver" % "4.4.3",
   "io.github.neotypes" %% "neotypes-core" % "0.18.3",
-  "com.sksamuel.elastic4s" %% "elastic4s-client-esjava" % "7.17.1"
+  "com.sksamuel.elastic4s" %% "elastic4s-client-esjava" % "7.17.1",
+  "org.typelevel" %% "cats-core" % "2.7.0"
 )
 
 resolvers ++= Seq(
