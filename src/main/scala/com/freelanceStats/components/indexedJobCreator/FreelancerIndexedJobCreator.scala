@@ -122,10 +122,10 @@ class FreelancerIndexedJobCreator @Inject() (
       .as[JsObject]
       .pipe { budgetJsObj =>
         Budget(
-          0,
-          0,
-          (budgetJsObj \ "minimum").asOpt[Double].getOrElse(0),
-          (budgetJsObj \ "maximum").asOpt[Double].getOrElse(0),
+          None,
+          None,
+          (budgetJsObj \ "minimum").asOpt[Double],
+          (budgetJsObj \ "maximum").asOpt[Double],
           currency
         )
       }
