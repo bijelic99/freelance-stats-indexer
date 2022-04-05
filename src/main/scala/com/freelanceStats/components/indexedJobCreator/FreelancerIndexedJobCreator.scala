@@ -8,6 +8,8 @@ import com.freelanceStats.commons.models.RawJob
 import com.freelanceStats.commons.models.indexedJob._
 import com.freelanceStats.components.aliasResolver.neo4j.{
   CategoryAliasResolver,
+  CityAliasResolver,
+  CountryAliasResolver,
   CurrencyAliasResolver,
   LanguageAliasResolver,
   TimezoneAliasResolver
@@ -25,8 +27,8 @@ import scala.util.chaining._
 
 class FreelancerIndexedJobCreator @Inject() (
     categoryAliasResolver: CategoryAliasResolver,
-    //cityAliasResolver: CityAliasResolver,
-    //countryAliasResolver: CountryAliasResolver,
+    cityAliasResolver: CityAliasResolver,
+    countryAliasResolver: CountryAliasResolver,
     currencyAliasResolver: CurrencyAliasResolver,
     timezoneAliasResolver: TimezoneAliasResolver,
     languageAliasResolver: LanguageAliasResolver
@@ -38,83 +40,86 @@ class FreelancerIndexedJobCreator @Inject() (
     _
   ] =
     Flow[(RawJob, Option[IndexedJob], (FileReference, Source[ByteString, _]))]
-      .mapAsync(1) {
+      .flatMapConcat {
         case (rawJob, maybeExistingJob, (fileReference, jobSource)) =>
-          for {
-            jobJson <- Future.successful(
-              (Json.parse(
-                jobSource.runWith(StreamConverters.asInputStream())
-              ) \ "result").as[JsObject]
-            )
-            id = maybeExistingJob
-              .map(_.id)
-              .getOrElse(UUID.randomUUID().toString)
-            sourceId = rawJob.sourceId
-            source = rawJob.source
-            title = (jobJson \ "title").as[String]
-            description = (jobJson \ "description").as[String]
-            categories <- parseCategories(jobJson, source)
-            currency <-
-              (jobJson \ "currency" \ "code")
-                .as[String]
-                .pipe(
-                  SourceAlias[Currency](
-                    None,
-                    source,
-                    _,
-                    None
+          Source
+            .future(
+              for {
+                jobJson <- Future.successful(
+                  (Json.parse(
+                    jobSource.runWith(StreamConverters.asInputStream())
+                  ) \ "result").as[JsObject]
+                )
+                id = maybeExistingJob
+                  .map(_.id)
+                  .getOrElse(UUID.randomUUID().toString)
+                sourceId = rawJob.sourceId
+                source = rawJob.source
+                title = (jobJson \ "title").as[String]
+                description = (jobJson \ "description").as[String]
+                categories <- parseCategories(jobJson, source)
+                currency <-
+                  (jobJson \ "currency" \ "code")
+                    .as[String]
+                    .pipe(
+                      SourceAlias[Currency](
+                        None,
+                        source,
+                        _,
+                        None
+                      )
+                    )
+                    .pipe(currencyAliasResolver.resolveOrElseAdd)
+                    .map(_.referencedValue)
+                payment = (jobJson \ "type").as[String].pipe {
+                  case "fixed" =>
+                    FixedPrice(getBudget(jobJson, currency))
+                  case "hourly" =>
+                    getHourlyPayment(jobJson, currency)
+                }
+                language <- (jobJson \ "language")
+                  .as[String]
+                  .pipe(
+                    SourceAlias[Language](
+                      None,
+                      source,
+                      _,
+                      None
+                    )
                   )
-                )
-                .pipe(currencyAliasResolver.resolveOrElseAdd)
-                .map(_.referencedValue)
-            payment = (jobJson \ "type").as[String].pipe {
-              case "fixed" =>
-                FixedPrice(getBudget(jobJson, currency))
-              case "hourly" =>
-                getHourlyPayment(jobJson, currency)
-            }
-            language <- (jobJson \ "language")
-              .as[String]
-              .pipe(
-                SourceAlias[Language](
-                  None,
-                  source,
-                  _,
-                  None
-                )
+                  .pipe(languageAliasResolver.resolveOrElseAdd)
+                  .map(_.referencedValue)
+                positionType = (jobJson \ "local")
+                  .asOpt[Boolean]
+                  .map(if (_) InPerson else Remote)
+                location = None
+                employer <- parseEmployer(jobJson, source)
+                valid = false
+                deleted = maybeExistingJob.exists(_.deleted)
+              } yield IndexedJob(
+                id,
+                sourceId,
+                source,
+                created =
+                  maybeExistingJob.map(_.created).getOrElse(DateTime.now()),
+                modified = DateTime.now(),
+                fileReference,
+                title,
+                description,
+                categories,
+                payment,
+                language,
+                positionType,
+                location,
+                employer,
+                valid,
+                deleted
               )
-              .pipe(languageAliasResolver.resolveOrElseAdd)
-              .map(_.referencedValue)
-            positionType = (jobJson \ "local")
-              .asOpt[Boolean]
-              .map(if (_) InPerson else Remote)
-            // TODO Parse location
-            location = None
-            employer <- parseEmployer(jobJson, source)
-            valid = false
-            deleted = maybeExistingJob.exists(_.deleted)
-          } yield IndexedJob(
-            id,
-            sourceId,
-            source,
-            created = maybeExistingJob.map(_.created).getOrElse(DateTime.now()),
-            modified = DateTime.now(),
-            fileReference,
-            title,
-            description,
-            categories,
-            payment,
-            language,
-            positionType,
-            location,
-            employer,
-            valid,
-            deleted
-          )
-      }
-      .map(job => Right(IndexingSuccess(job)))
-      .recover { case indexingError: IndexingError =>
-        Left(indexingError)
+            )
+            .map(job => Right(IndexingSuccess(job)))
+            .recover { case t =>
+              Left(IndexingError(rawJob, t))
+            }
       }
 
   private def getBudget(jobJson: JsObject, currency: Option[Currency]): Budget =
@@ -171,6 +176,7 @@ class FreelancerIndexedJobCreator @Inject() (
           .map(categoryAliasResolver.resolveOrElseAdd)
       )
       .map(_.flatMap(_.referencedValue))
+      .map(_.distinctBy(_.id))
   }
 
   private def parseEmployer(
@@ -179,10 +185,9 @@ class FreelancerIndexedJobCreator @Inject() (
   ): Future[Option[Employer]] = {
     for {
       owner <- OptionT.fromOption[Future](jobJson.\("owner").asOpt[JsObject])
-      sourceId = (owner \ "id").as[String]
+      sourceId = (owner \ "id").as[Int].toString
       username = (owner \ "username").as[String]
-      // TODO Parse location
-      location = None
+      location <- parseEmployerLocation(owner, source)
       primaryLanguage <- (owner \ "primary_language")
         .asOpt[String]
         .map(
@@ -235,5 +240,42 @@ class FreelancerIndexedJobCreator @Inject() (
       timezone
     )
   }.value
+
+  private def parseEmployerLocation(
+      ownerJson: JsObject,
+      source: String
+  ): OptionT[Future, Option[Location]] =
+    (ownerJson \ "location" \ "country" \ "code")
+      .asOpt[String]
+      .map {
+        SourceAlias[Country](
+          None,
+          source,
+          _,
+          None
+        )
+      }
+      .map(countryAliasResolver.resolveOrElseAdd(_).map(_.referencedValue))
+      .getOrElse(Future.successful(None))
+      .flatMap {
+        case Some(country) =>
+          (ownerJson \ "location" \ "city")
+            .asOpt[String]
+            .map {
+              SourceAlias[City](
+                None,
+                source,
+                _,
+                None
+              )
+            }
+            .map(cityAliasResolver.resolveOrElseAdd(_).map(_.referencedValue))
+            .getOrElse(Future.successful(None))
+            .map(maybeCity => Some(Location(country, maybeCity)))
+        case None =>
+          Future.successful(None)
+      }
+      .map(Option(_))
+      .pipe(OptionT[Future, Option[Location]])
 
 }

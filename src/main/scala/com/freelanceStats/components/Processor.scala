@@ -1,6 +1,7 @@
 package com.freelanceStats.components
 
 import akka.Done
+import akka.event.Logging
 import akka.stream.scaladsl.{
   Broadcast,
   Flow,
@@ -11,7 +12,13 @@ import akka.stream.scaladsl.{
   Source,
   ZipWith
 }
-import akka.stream.{ClosedShape, KillSwitch, KillSwitches, OverflowStrategy}
+import akka.stream.{
+  Attributes,
+  ClosedShape,
+  KillSwitch,
+  KillSwitches,
+  OverflowStrategy
+}
 import akka.util.ByteString
 import com.freelanceStats.commons.models.RawJob
 import com.freelanceStats.commons.models.indexedJob.IndexedJob
@@ -108,6 +115,9 @@ class Processor @Inject() (
                     error
                   }
                   .log("job-creator-error-logger")
+                  .withAttributes(
+                    Attributes.logLevels(onElement = Logging.WarningLevel)
+                  )
                   .to(Sink.ignore),
                 _.isLeft
               )
@@ -117,18 +127,23 @@ class Processor @Inject() (
           )
           val flowShape5 = builder.add(jobValidator())
           val flowShape6 = builder.add(
-            Flow[Either[ErrorMessage, IndexedJob]]
-              .divertTo(
-                Flow[Either[ErrorMessage, IndexedJob]]
-                  .collect { case Left(error) =>
+            Flow[Either[(ErrorMessage, IndexedJob), IndexedJob]]
+              .alsoTo(
+                Flow[Either[(ErrorMessage, IndexedJob), IndexedJob]]
+                  .collect { case Left(error -> _) =>
                     error
                   }
                   .log("job-validator-error-logger")
-                  .to(Sink.ignore),
-                _.isLeft
+                  .withAttributes(
+                    Attributes.logLevels(onElement = Logging.WarningLevel)
+                  )
+                  .to(Sink.ignore)
               )
-              .collect { case Right(job) =>
-                job
+              .collect {
+                case Right(job) =>
+                  job
+                case Left(_ -> job) =>
+                  job
               }
           )
 
