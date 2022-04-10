@@ -6,14 +6,11 @@ import akka.util.ByteString
 import cats.data.OptionT
 import com.freelanceStats.commons.models.RawJob
 import com.freelanceStats.commons.models.indexedJob._
-import com.freelanceStats.components.aliasResolver.neo4j.{
-  CategoryAliasResolver,
-  CityAliasResolver,
-  CountryAliasResolver,
-  CurrencyAliasResolver,
-  LanguageAliasResolver,
-  TimezoneAliasResolver
-}
+import com.freelanceStats.components.aliasResolver.neo4j._
+import com.freelanceStats.components.resolvers.countryResolver.CachedCountryResolver
+import com.freelanceStats.components.resolvers.currencyResolver.CachedCurrencyResolver
+import com.freelanceStats.components.resolvers.languageResolver.CachedLanguageResolver
+import com.freelanceStats.components.resolvers.timezoneResolver.CachedTimezoneResolver
 import com.freelanceStats.models.{IndexingError, IndexingSuccess, SourceAlias}
 import com.freelanceStats.s3Client.models.FileReference
 import org.joda.time.DateTime
@@ -27,11 +24,10 @@ import scala.util.chaining._
 
 class FreelancerIndexedJobCreator @Inject() (
     categoryAliasResolver: CategoryAliasResolver,
-    cityAliasResolver: CityAliasResolver,
-    countryAliasResolver: CountryAliasResolver,
-    currencyAliasResolver: CurrencyAliasResolver,
-    timezoneAliasResolver: TimezoneAliasResolver,
-    languageAliasResolver: LanguageAliasResolver
+    countryResolver: CachedCountryResolver,
+    timezoneResolver: CachedTimezoneResolver,
+    currencyResolver: CachedCurrencyResolver,
+    languageResolver: CachedLanguageResolver
 )(implicit materializer: Materializer, executionContext: ExecutionContext)
     extends IndexedJobCreator {
   override def apply(): Flow[
@@ -61,16 +57,8 @@ class FreelancerIndexedJobCreator @Inject() (
                 currency <-
                   (jobJson \ "currency" \ "code")
                     .as[String]
-                    .pipe(
-                      SourceAlias[Currency](
-                        None,
-                        source,
-                        _,
-                        None
-                      )
-                    )
-                    .pipe(currencyAliasResolver.resolveOrElseAdd)
-                    .map(_.referencedValue)
+                    .toUpperCase
+                    .pipe(currencyResolver.resolveByShortName)
                 payment = (jobJson \ "type").as[String].pipe {
                   case "fixed" =>
                     FixedPrice(getBudget(jobJson, currency))
@@ -79,16 +67,8 @@ class FreelancerIndexedJobCreator @Inject() (
                 }
                 language <- (jobJson \ "language")
                   .as[String]
-                  .pipe(
-                    SourceAlias[Language](
-                      None,
-                      source,
-                      _,
-                      None
-                    )
-                  )
-                  .pipe(languageAliasResolver.resolveOrElseAdd)
-                  .map(_.referencedValue)
+                  .toLowerCase
+                  .pipe(languageResolver.resolveByShortName)
                 positionType = (jobJson \ "local")
                   .asOpt[Boolean]
                   .map(if (_) InPerson else Remote)
@@ -184,52 +164,25 @@ class FreelancerIndexedJobCreator @Inject() (
       source: String
   ): Future[Option[Employer]] = {
     for {
-      owner <- OptionT.fromOption[Future](jobJson.\("owner").asOpt[JsObject])
-      sourceId = (owner \ "id").as[Int].toString
-      username = (owner \ "username").as[String]
-      location <- parseEmployerLocation(owner, source)
-      primaryLanguage <- (owner \ "primary_language")
+      employer <- OptionT.fromOption[Future](jobJson.\("owner").asOpt[JsObject])
+      sourceId = (employer \ "id").as[Int].toString
+      username = (employer \ "username").as[String]
+      location <- parseEmployerLocation(employer)
+      primaryLanguage <- (employer \ "primary_language")
         .asOpt[String]
-        .map(
-          SourceAlias[Language](
-            None,
-            source,
-            _,
-            None
-          )
-        )
-        .map(languageAliasResolver.resolveOrElseAdd(_).map(_.referencedValue))
+        .map(_.toLowerCase)
+        .map(languageResolver.resolveByShortName)
         .getOrElse(Future.successful(None))
         .map(Option(_))
         .pipe(OptionT[Future, Option[Language]])
-      primaryCurrency <- (owner \ "primary_currency" \ "code")
+      primaryCurrency <- (employer \ "primary_currency" \ "code")
         .asOpt[String]
-        .map(
-          SourceAlias[Currency](
-            None,
-            source,
-            _,
-            None
-          )
-        )
-        .map(currencyAliasResolver.resolveOrElseAdd(_).map(_.referencedValue))
+        .map(_.toUpperCase)
+        .map(currencyResolver.resolveByShortName)
         .getOrElse(Future.successful(None))
         .map(Option(_))
         .pipe(OptionT[Future, Option[Currency]])
-      timezone <- (owner \ "timezone" \ "timezone")
-        .asOpt[String]
-        .map(
-          SourceAlias[Timezone](
-            None,
-            source,
-            _,
-            None
-          )
-        )
-        .map(timezoneAliasResolver.resolveOrElseAdd(_).map(_.referencedValue))
-        .getOrElse(Future.successful(None))
-        .map(Option(_))
-        .pipe(OptionT[Future, Option[Timezone]])
+      timezone <- parseEmployerTimezone(employer)
     } yield Employer(
       sourceId,
       source,
@@ -241,40 +194,26 @@ class FreelancerIndexedJobCreator @Inject() (
     )
   }.value
 
+  private def parseEmployerTimezone(
+      ownerJson: JsObject
+  ): OptionT[Future, Option[Timezone]] =
+    (ownerJson \ "timezone" \ "timezone")
+      .asOpt[String]
+      .map(timezoneResolver.resolveByName)
+      .getOrElse(Future.successful(None))
+      .map(Option(_))
+      .pipe(OptionT[Future, Option[Timezone]])
+
   private def parseEmployerLocation(
-      ownerJson: JsObject,
-      source: String
+      ownerJson: JsObject
   ): OptionT[Future, Option[Location]] =
     (ownerJson \ "location" \ "country" \ "code")
       .asOpt[String]
-      .map {
-        SourceAlias[Country](
-          None,
-          source,
-          _,
-          None
-        )
-      }
-      .map(countryAliasResolver.resolveOrElseAdd(_).map(_.referencedValue))
+      .map(_.toUpperCase)
+      .map(countryResolver.resolveByAlpha2Code)
       .getOrElse(Future.successful(None))
-      .flatMap {
-        case Some(country) =>
-          (ownerJson \ "location" \ "city")
-            .asOpt[String]
-            .map {
-              SourceAlias[City](
-                None,
-                source,
-                _,
-                None
-              )
-            }
-            .map(cityAliasResolver.resolveOrElseAdd(_).map(_.referencedValue))
-            .getOrElse(Future.successful(None))
-            .map(maybeCity => Some(Location(country, maybeCity)))
-        case None =>
-          Future.successful(None)
-      }
+      //City resolving is yet to be implemented
+      .map(_.map(Location(_, None)))
       .map(Option(_))
       .pipe(OptionT[Future, Option[Location]])
 
