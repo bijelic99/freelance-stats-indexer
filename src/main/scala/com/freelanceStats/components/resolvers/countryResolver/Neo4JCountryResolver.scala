@@ -1,5 +1,5 @@
-package com.freelanceStats.components.resolvers.languageResolver
-import com.freelanceStats.commons.models.indexedJob.Language
+package com.freelanceStats.components.resolvers.countryResolver
+import com.freelanceStats.commons.models.indexedJob.Country
 import com.freelanceStats.configurations.Neo4jConfiguration
 import com.freelanceStats.util.neo4jConversions.ValueMappers
 import neotypes.implicits.all._
@@ -10,11 +10,11 @@ import org.neo4j.driver.AuthTokens
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class Neo4JLanguageResolver @Inject() (
+class Neo4JCountryResolver @Inject() (
     configuration: Neo4jConfiguration
 )(implicit
     executionContext: ExecutionContext
-) extends LanguageResolver {
+) extends CountryResolver {
 
   private val driver = GraphDatabase.driver[Future](
     configuration.url,
@@ -25,14 +25,14 @@ class Neo4JLanguageResolver @Inject() (
       .getOrElse(AuthTokens.none())
   )
 
-  def resolveByShortNameQuery(shortName: String): DeferredQuery[Language] =
-    c"MATCH (language: Language{shortName: $shortName}) return language;"
-      .query[Language]
+  def resolveByAlpha2CodeQuery(code: String): DeferredQuery[Country] =
+    c"MATCH (country: Country{alpha2Code: $code}) return country;"
+      .query[Country]
 
-  override def resolveByShortName(shortName: String): Future[Option[Language]] =
-    resolveByShortNameQuery(shortName)
+  override def resolveByAlpha2Code(code: String): Future[Option[Country]] =
+    resolveByAlpha2CodeQuery(code)
       .set(driver)(
-        ResultMapper.fromValueMapper(ValueMappers.LanguageValueMapper)
+        ResultMapper.fromValueMapper(ValueMappers.CountryValueMapper)
       )
       .map(_.headOption)
 }
