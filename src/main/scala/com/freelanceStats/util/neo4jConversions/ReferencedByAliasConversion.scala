@@ -1,17 +1,6 @@
 package com.freelanceStats.util.neo4jConversions
 
-import com.freelanceStats.commons.models.indexedJob.{
-  InPerson,
-  ReferencedByAlias,
-  Remote,
-  Category => CategoryModel,
-  City => CityModel,
-  Country => CountryModel,
-  Currency => CurrencyModel,
-  Language => LanguageModel,
-  PositionType => PositionTypeModel,
-  Timezone => TimezoneModel
-}
+import com.freelanceStats.commons.models.indexedJob.{Coordinates, InPerson, ReferencedByAlias, Remote, Category => CategoryModel, City => CityModel, Country => CountryModel, Currency => CurrencyModel, Language => LanguageModel, PositionType => PositionTypeModel, Timezone => TimezoneModel}
 import org.neo4j.driver.Value
 
 import scala.util.Try
@@ -34,8 +23,10 @@ object ReferencedByAliasConversion {
       CityModel(
         value.get("id").asString(),
         value.get("name").asString(),
-        Try(value.get("latitude").asDouble()).toOption,
-        Try(value.get("longitude").asDouble()).toOption
+        Coordinates(
+          Try(value.get("latitude").asDouble()).toOption,
+          Try(value.get("longitude").asDouble()).toOption
+        )
       )
   }
   object Country extends ReferencedByAliasConversion[CountryModel] {
@@ -51,8 +42,10 @@ object ReferencedByAliasConversion {
         Try(value.get("subRegion").asString()).toOption,
         value.get("continents").asList[String](_.asString()).asScala.toSeq,
         value.get("startOfWeek").asString(),
-        Try(value.get("latitude").asDouble()).toOption,
-        Try(value.get("longitude").asDouble()).toOption,
+        Coordinates(
+          Try(value.get("latitude").asDouble()).toOption,
+          Try(value.get("longitude").asDouble()).toOption
+        ),
         value.get("timezones").asList[String](_.asString()).asScala.toSeq
       )
   }

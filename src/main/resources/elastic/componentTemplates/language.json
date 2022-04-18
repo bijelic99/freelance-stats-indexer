@@ -7,7 +7,10 @@
             "id": {
               "type": "keyword"
             },
-            "name": {
+            "shortName": {
+              "type": "keyword"
+            },
+            "names": {
               "type": "keyword"
             }
           }
@@ -15,7 +18,7 @@
       }
     }
   },
-  "version": 1,
+  "version": 2,
   "_meta": {
     "description": "Language mapping"
   }

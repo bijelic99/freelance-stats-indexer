@@ -11,6 +11,36 @@
                 },
                 "name": {
                   "type": "keyword"
+                },
+                "officialName": {
+                  "type": "keyword"
+                },
+                "alpha2Code": {
+                  "type": "keyword"
+                },
+                "alpha3Code": {
+                  "type": "keyword"
+                },
+                "numeric": {
+                  "type": "keyword"
+                },
+                "region": {
+                  "type": "keyword"
+                },
+                "subregion": {
+                  "type": "keyword"
+                },
+                "continents": {
+                  "type": "keyword"
+                },
+                "startOfWeek": {
+                  "type": "keyword"
+                },
+                "coordinates": {
+                  "type": "geo_point"
+                },
+                "timezones": {
+                  "type": "keyword"
                 }
               }
             },
@@ -21,6 +51,9 @@
                 },
                 "name": {
                   "type": "keyword"
+                },
+                "coordinates": {
+                  "type": "geo_point"
                 }
               }
             }
@@ -29,7 +62,7 @@
       }
     }
   },
-  "version": 1,
+  "version": 2,
   "_meta": {
     "description": "Location mapping"
   }

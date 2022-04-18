@@ -52,7 +52,7 @@
     }
   },
   "composed_of": ["file-reference", "category", "payment", "language", "location", "employer"],
-  "version": 1,
+  "version": 2,
   "_meta": {
     "description": "Template for 'job-index'"
   }

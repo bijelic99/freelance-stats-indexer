@@ -1,16 +1,6 @@
 package com.freelanceStats.util.neo4jConversions
 
-import com.freelanceStats.commons.models.indexedJob.{
-  Category,
-  City,
-  Country,
-  Currency,
-  InPerson,
-  Language,
-  PositionType,
-  Remote,
-  Timezone
-}
+import com.freelanceStats.commons.models.indexedJob.{Category, City, Coordinates, Country, Currency, InPerson, Language, PositionType, Remote, Timezone}
 import neotypes.mappers.ValueMapper
 import org.neo4j.driver.Value
 
@@ -43,8 +33,10 @@ object ValueMappers {
           City(
             v.get("id").asString(),
             v.get("name").asString(),
-            Try(v.get("latitude").asDouble()).toOption,
-            Try(v.get("longitude").asDouble()).toOption
+            Coordinates(
+              Try(v.get("latitude").asDouble()).toOption,
+              Try(v.get("longitude").asDouble()).toOption
+            )
           )
         }
         .toRight(new Exception("value can't be None"))
@@ -68,8 +60,10 @@ object ValueMappers {
             Try(v.get("subRegion").asString()).toOption,
             v.get("continents").asList[String](_.asString()).asScala.toSeq,
             v.get("startOfWeek").asString(),
-            Try(v.get("latitude").asDouble()).toOption,
-            Try(v.get("longitude").asDouble()).toOption,
+            Coordinates(
+              Try(v.get("latitude").asDouble()).toOption,
+              Try(v.get("longitude").asDouble()).toOption
+            ),
             v.get("timezones").asList[String](_.asString()).asScala.toSeq
           )
         }
