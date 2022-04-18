@@ -1,6 +1,17 @@
 package com.freelanceStats.util.neo4jConversions
 
-import com.freelanceStats.commons.models.indexedJob.{Category, City, Coordinates, Country, Currency, InPerson, Language, PositionType, Remote, Timezone}
+import com.freelanceStats.commons.models.indexedJob.{
+  Category,
+  City,
+  Coordinates,
+  Country,
+  Currency,
+  InPerson,
+  Language,
+  PositionType,
+  Remote,
+  Timezone
+}
 import neotypes.mappers.ValueMapper
 import org.neo4j.driver.Value
 

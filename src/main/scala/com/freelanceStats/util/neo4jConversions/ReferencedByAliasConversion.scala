@@ -1,6 +1,18 @@
 package com.freelanceStats.util.neo4jConversions
 
-import com.freelanceStats.commons.models.indexedJob.{Coordinates, InPerson, ReferencedByAlias, Remote, Category => CategoryModel, City => CityModel, Country => CountryModel, Currency => CurrencyModel, Language => LanguageModel, PositionType => PositionTypeModel, Timezone => TimezoneModel}
+import com.freelanceStats.commons.models.indexedJob.{
+  Coordinates,
+  InPerson,
+  ReferencedByAlias,
+  Remote,
+  Category => CategoryModel,
+  City => CityModel,
+  Country => CountryModel,
+  Currency => CurrencyModel,
+  Language => LanguageModel,
+  PositionType => PositionTypeModel,
+  Timezone => TimezoneModel
+}
 import org.neo4j.driver.Value
 
 import scala.util.Try
