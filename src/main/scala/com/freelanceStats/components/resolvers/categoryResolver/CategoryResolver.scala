@@ -7,6 +7,6 @@ import scala.concurrent.Future
 
 trait CategoryResolver {
   def resolveCategoriesByAlias(
-      categoryAliases: Seq[CategoryAlias]
+      categoryAlias: CategoryAlias
   ): Future[Seq[Category]]
 }

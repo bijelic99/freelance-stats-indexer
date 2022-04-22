@@ -6,11 +6,12 @@ import akka.util.ByteString
 import cats.data.OptionT
 import com.freelanceStats.commons.models.RawJob
 import com.freelanceStats.commons.models.indexedJob._
+import com.freelanceStats.components.resolvers.categoryResolver.CachedCategoryResolver
 import com.freelanceStats.components.resolvers.countryResolver.CachedCountryResolver
 import com.freelanceStats.components.resolvers.currencyResolver.CachedCurrencyResolver
 import com.freelanceStats.components.resolvers.languageResolver.CachedLanguageResolver
 import com.freelanceStats.components.resolvers.timezoneResolver.CachedTimezoneResolver
-import com.freelanceStats.models.{IndexingError, IndexingSuccess}
+import com.freelanceStats.models.{CategoryAlias, IndexingError, IndexingSuccess}
 import com.freelanceStats.s3Client.models.FileReference
 import org.joda.time.DateTime
 import play.api.libs.json.{JsObject, Json}
@@ -22,11 +23,11 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.chaining._
 
 class FreelancerIndexedJobCreator @Inject() (
-    //categoryAliasResolver: CategoryAliasResolver,
     countryResolver: CachedCountryResolver,
     timezoneResolver: CachedTimezoneResolver,
     currencyResolver: CachedCurrencyResolver,
-    languageResolver: CachedLanguageResolver
+    languageResolver: CachedLanguageResolver,
+    categoryResolver: CachedCategoryResolver
 )(implicit materializer: Materializer, executionContext: ExecutionContext)
     extends IndexedJobCreator {
   override def apply(): Flow[
@@ -52,7 +53,7 @@ class FreelancerIndexedJobCreator @Inject() (
                 source = rawJob.source
                 title = (jobJson \ "title").as[String]
                 description = (jobJson \ "description").as[String]
-                categories = Nil
+                categories <- parseCategories(jobJson, rawJob.source)
                 currency <-
                   (jobJson \ "currency" \ "code")
                     .as[String]
@@ -135,28 +136,23 @@ class FreelancerIndexedJobCreator @Inject() (
     )
   }
 
-//  private def parseCategories(
-//      jobJson: JsObject,
-//      source: String
-//  ): Future[Seq[Category]] = {
-//    Future
-//      .sequence(
-//        (jobJson \ "jobs")
-//          .as[Seq[JsObject]]
-//          .map(_.\("name").as[String])
-//          .map(
-//            SourceAlias[Category](
-//              None,
-//              source,
-//              _,
-//              None
-//            )
-//          )
-//          .map(categoryAliasResolver.resolveOrElseAdd)
-//      )
-//      .map(_.flatMap(_.referencedValue))
-//      .map(_.distinctBy(_.id))
-//  }
+  private def parseCategories(
+      jobJson: JsObject,
+      source: String
+  ): Future[Seq[Category]] =
+    Future
+      .sequence(
+        (jobJson \ "jobs")
+          .as[Seq[JsObject]]
+          .flatMap { job =>
+            val categoryAlias = CategoryAlias(source, (job \ "name").as[String])
+            val topLevelCategoryAlias =
+              CategoryAlias(source, (job \ "category" \ "name").as[String])
+            Seq(topLevelCategoryAlias, categoryAlias)
+          }
+          .map(categoryResolver.resolveCategoriesByAlias)
+      )
+      .map(_.flatten.distinctBy(_.name))
 
   private def parseEmployer(
       jobJson: JsObject,
