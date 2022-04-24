@@ -11,7 +11,7 @@ import com.freelanceStats.components.resolvers.countryResolver.CachedCountryReso
 import com.freelanceStats.components.resolvers.currencyResolver.CachedCurrencyResolver
 import com.freelanceStats.components.resolvers.languageResolver.CachedLanguageResolver
 import com.freelanceStats.components.resolvers.timezoneResolver.CachedTimezoneResolver
-import com.freelanceStats.models.{CategoryAlias, IndexingError, IndexingSuccess}
+import com.freelanceStats.models.{IndexingError, IndexingSuccess}
 import com.freelanceStats.s3Client.models.FileReference
 import org.joda.time.DateTime
 import play.api.libs.json.{JsObject, Json}
@@ -53,7 +53,7 @@ class FreelancerIndexedJobCreator @Inject() (
                 source = rawJob.source
                 title = (jobJson \ "title").as[String]
                 description = (jobJson \ "description").as[String]
-                categories <- parseCategories(jobJson, rawJob.source)
+                categories <- parseCategories(jobJson)
                 currency <-
                   (jobJson \ "currency" \ "code")
                     .as[String]
@@ -76,12 +76,14 @@ class FreelancerIndexedJobCreator @Inject() (
                 employer <- parseEmployer(jobJson, source)
                 valid = false
                 deleted = maybeExistingJob.exists(_.deleted)
+                submitDate = new DateTime(
+                  (jobJson \ "submitdate").as[Long] * 1000
+                )
               } yield IndexedJob(
                 id,
                 sourceId,
                 source,
-                created =
-                  maybeExistingJob.map(_.created).getOrElse(DateTime.now()),
+                created = maybeExistingJob.map(_.created).getOrElse(submitDate),
                 modified = DateTime.now(),
                 fileReference,
                 title,
@@ -137,20 +139,19 @@ class FreelancerIndexedJobCreator @Inject() (
   }
 
   private def parseCategories(
-      jobJson: JsObject,
-      source: String
+      jobJson: JsObject
   ): Future[Seq[Category]] =
     Future
       .sequence(
         (jobJson \ "jobs")
           .as[Seq[JsObject]]
           .flatMap { job =>
-            val categoryAlias = CategoryAlias(source, (job \ "name").as[String])
+            val categoryAlias = (job \ "name").as[String]
             val topLevelCategoryAlias =
-              CategoryAlias(source, (job \ "category" \ "name").as[String])
+              (job \ "category" \ "name").as[String]
             Seq(topLevelCategoryAlias, categoryAlias)
           }
-          .map(categoryResolver.resolveCategoriesByAlias)
+          .map(categoryResolver.resolveCategoriesByCategoryName)
       )
       .map(_.flatten.distinctBy(_.name))
 

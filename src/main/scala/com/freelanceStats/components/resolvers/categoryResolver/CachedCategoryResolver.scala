@@ -1,7 +1,6 @@
 package com.freelanceStats.components.resolvers.categoryResolver
 
 import com.freelanceStats.commons.models.indexedJob.Category
-import com.freelanceStats.models.CategoryAlias
 import com.github.benmanes.caffeine.cache.Caffeine
 import play.api.cache.AsyncCacheApi
 import play.api.cache.caffeine.CaffeineCacheApi
@@ -16,18 +15,18 @@ class CachedCategoryResolver @Inject() (underlyingResolver: CategoryResolver)(
 ) extends CategoryResolver {
   private lazy val cache: AsyncCacheApi = new CaffeineCacheApi(
     new NamedCaffeineCache[Any, Any](
-      "country-resolver-cache",
+      "category-resolver-cache",
       Caffeine.newBuilder().buildAsync[Any, Any]()
     )
   )
 
-  override def resolveCategoriesByAlias(
-      categoryAlias: CategoryAlias
+  override def resolveCategoriesByCategoryName(
+      categoryName: String
   ): Future[Seq[Category]] =
     cache.getOrElseUpdate(
-      s"${categoryAlias.source}-${categoryAlias.value}",
+      categoryName,
       1.hour
     )(
-      underlyingResolver.resolveCategoriesByAlias(categoryAlias)
+      underlyingResolver.resolveCategoriesByCategoryName(categoryName)
     )
 }
