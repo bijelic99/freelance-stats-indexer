@@ -28,7 +28,8 @@ object ValueMappers {
         .map { v =>
           Category(
             v.get("id").asString(),
-            v.get("name").asString()
+            v.get("name").asString(),
+            v.get("topLevel").asBoolean()
           )
         }
         .toRight(new Exception("value can't be None"))
