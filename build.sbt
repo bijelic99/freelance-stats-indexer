@@ -29,6 +29,7 @@ releaseProcess := Seq[ReleaseStep](
 )
 
 lazy val AkkaVersion = "2.6.14"
+lazy val playWsStandaloneVersion = "2.1.10"
 
 libraryDependencies ++= Seq(
   "com.google.inject" % "guice" % "5.0.1",
@@ -41,6 +42,8 @@ libraryDependencies ++= Seq(
   "com.freelance-stats" %% "commons" % "0.0.22",
   "com.typesafe.play" %% "play-cache" % "2.8.13",
   "com.typesafe.play" %% "play-caffeine-cache" % "2.8.13",
+  "com.typesafe.play" %% "play-ahc-ws-standalone" % playWsStandaloneVersion,
+  "com.typesafe.play" %% "play-ws-standalone-json" % playWsStandaloneVersion,
   "com.github.ben-manes.caffeine" % "caffeine" % "2.8.8",
   "org.neo4j.driver" % "neo4j-java-driver" % "4.4.3",
   "io.github.neotypes" %% "neotypes-core" % "0.18.3",

@@ -6,6 +6,7 @@ import akka.util.ByteString
 import cats.data.OptionT
 import com.freelanceStats.commons.models.RawJob
 import com.freelanceStats.commons.models.indexedJob._
+import com.freelanceStats.components.currencyConverter.CurrencyConverter
 import com.freelanceStats.components.resolvers.categoryResolver.CachedCategoryResolver
 import com.freelanceStats.components.resolvers.countryResolver.CachedCountryResolver
 import com.freelanceStats.components.resolvers.currencyResolver.CachedCurrencyResolver
@@ -27,7 +28,8 @@ class FreelancerIndexedJobCreator @Inject() (
     timezoneResolver: CachedTimezoneResolver,
     currencyResolver: CachedCurrencyResolver,
     languageResolver: CachedLanguageResolver,
-    categoryResolver: CachedCategoryResolver
+    categoryResolver: CachedCategoryResolver,
+    currencyConverter: CurrencyConverter
 )(implicit materializer: Materializer, executionContext: ExecutionContext)
     extends IndexedJobCreator {
   override def apply(): Flow[
@@ -59,11 +61,14 @@ class FreelancerIndexedJobCreator @Inject() (
                     .as[String]
                     .toUpperCase
                     .pipe(currencyResolver.resolveByShortName)
-                payment = (jobJson \ "type").as[String].pipe {
+                submitDate = new DateTime(
+                  (jobJson \ "submitdate").as[Long] * 1000
+                )
+                payment <- (jobJson \ "type").as[String].pipe {
                   case "fixed" =>
-                    FixedPrice(getBudget(jobJson, currency))
+                    getBudget(jobJson, currency, submitDate).map(FixedPrice)
                   case "hourly" =>
-                    getHourlyPayment(jobJson, currency)
+                    getHourlyPayment(jobJson, currency, submitDate)
                 }
                 language <- (jobJson \ "language")
                   .as[String]
@@ -76,9 +81,6 @@ class FreelancerIndexedJobCreator @Inject() (
                 employer <- parseEmployer(jobJson, source)
                 valid = false
                 deleted = maybeExistingJob.exists(_.deleted)
-                submitDate = new DateTime(
-                  (jobJson \ "submitdate").as[Long] * 1000
-                )
               } yield IndexedJob(
                 id,
                 sourceId,
@@ -104,23 +106,47 @@ class FreelancerIndexedJobCreator @Inject() (
             }
       }
 
-  private def getBudget(jobJson: JsObject, currency: Option[Currency]): Budget =
-    (jobJson \ "budget")
+  private def getBudget(
+      jobJson: JsObject,
+      maybeCurrency: Option[Currency],
+      jobCreateDate: DateTime
+  ): Future[Budget] = {
+    val budgetJsObj = (jobJson \ "budget")
       .as[JsObject]
-      .pipe { budgetJsObj =>
-        Budget(
-          None,
-          None,
-          (budgetJsObj \ "minimum").asOpt[Double],
-          (budgetJsObj \ "maximum").asOpt[Double],
-          currency
-        )
-      }
+    val maybeMinimum = (budgetJsObj \ "minimum").asOpt[Double]
+    val maybeMaximum = (budgetJsObj \ "maximum").asOpt[Double]
+
+    for {
+      maybeUsdMinimum <- maybeMinimum
+        .zip(maybeCurrency)
+        .map { case (minimum, currency) =>
+          currencyConverter
+            .convertToUsd(minimum, currency, jobCreateDate)
+            .map(Some(_))
+        }
+        .getOrElse(Future.successful(None))
+      maybeUsdMaximum <- maybeMaximum
+        .zip(maybeCurrency)
+        .map { case (maximum, currency) =>
+          currencyConverter
+            .convertToUsd(maximum, currency, jobCreateDate)
+            .map(Some(_))
+        }
+        .getOrElse(Future.successful(None))
+    } yield Budget(
+      maybeUsdMinimum,
+      maybeUsdMaximum,
+      maybeMinimum,
+      maybeMaximum,
+      maybeCurrency
+    )
+  }
 
   private def getHourlyPayment(
       jobJson: JsObject,
-      currency: Option[Currency]
-  ): Hourly = {
+      currency: Option[Currency],
+      jobCreateDate: DateTime
+  ): Future[Hourly] = {
     val commitment =
       (jobJson \ "hourly_project_info" \ "commitment").as[JsObject]
     val hours = (commitment \ "hours").as[Int].pipe(_.hours)
@@ -130,12 +156,15 @@ class FreelancerIndexedJobCreator @Inject() (
       case _ =>
         None
     }
-    Hourly(
-      hours,
-      repeatInterval.isDefined,
-      repeatInterval,
-      getBudget(jobJson, currency)
-    )
+    getBudget(jobJson, currency, jobCreateDate)
+      .map(
+        Hourly(
+          hours,
+          repeatInterval.isDefined,
+          repeatInterval,
+          _
+        )
+      )
   }
 
   private def parseCategories(
